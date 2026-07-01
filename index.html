@@ -86,19 +86,21 @@
   .cal-weekdays, .cal-grid{
     display:grid;
     grid-template-columns: repeat(7, 1fr);
+    text-align:center;
   }
   .cal-weekdays div{
-    text-align:center;
     font-size:12px;
     color:var(--text-muted);
     padding-bottom:8px;
+  }
+  .cal-grid{
+    row-gap:4px;
   }
   .cal-grid div.cell{
     display:flex;
     align-items:center;
     justify-content:center;
-    aspect-ratio:1/1;
-    margin:3px 0;
+    height:38px;
   }
   .day-btn{
     width:34px; height:34px;
@@ -206,6 +208,15 @@
     color:var(--accent);
     margin-bottom:18px;
   }
+  .sheet .notice{
+    font-size:12px;
+    color:var(--text-muted);
+    background:var(--bg);
+    border-radius:12px;
+    padding:10px 12px;
+    margin:0 0 16px;
+    line-height:1.5;
+  }
   label{
     display:block;
     font-size:13px;
@@ -273,7 +284,7 @@
 <div class="app">
   <header>
     <div class="eyebrow">상담 신청</div>
-    <h1>선생님과 상담 시간 잡기</h1>
+    <h1>염승희 선생님과 상담 시간 잡기</h1>
     <p class="sub">평일 08:00 ~ 16:00 사이, 비어있는 시간을 골라 신청하세요.</p>
   </header>
 
@@ -297,6 +308,7 @@
   <div class="sheet">
     <h2>상담 신청</h2>
     <div class="picked" id="pickedInfo"></div>
+    <p class="notice">실명으로 작성해주세요. 허위 작성이나 부적절한 내용은 확인 후 별도로 안내될 수 있어요.</p>
 
     <label for="studentId">학번</label>
     <input id="studentId" type="text" inputmode="numeric" placeholder="예: 20413">
