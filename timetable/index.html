@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시간표 테마 메이커 🎨</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#FFFFFF; --card:#FFFFFF; --ink:#1B1B1B; --sub:#6B6B6B;
+    --lav:#2E2E2E; --lav-deep:#111111; --pink:#FFD6E0; --mint:#CFF3E0;
+    --peach:#FFE3C7; --sky:#CFE6FF; --shadow:rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Gowun Dodum',sans-serif; background:var(--bg); color:var(--ink);
+    min-height:100vh; padding:22px 16px 60px;
+  }
+  h1,h2,h3,.jua{font-family:'Jua',sans-serif; font-weight:400;}
+  header{max-width:1180px; margin:0 auto 20px; text-align:center;}
+  header h1{font-size:2rem; color:var(--lav-deep); letter-spacing:.02em;}
+  header h1 .emoji{display:inline-block; transform:rotate(-8deg);}
+  header p{color:var(--sub); margin-top:6px; font-size:.95rem;}
+  .wrap{max-width:1180px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media(max-width:920px){.wrap{grid-template-columns:1fr;}}
+
+  .clay{
+    background:var(--card); border-radius:22px; padding:20px;
+    border:1.5px solid #EAEAEA;
+    box-shadow:6px 8px 18px var(--shadow);
+  }
+  .clay + .clay{margin-top:20px;}
+  .section-title{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  .section-title .badge{
+    font-family:'Jua'; background:var(--lav); color:#fff; border-radius:999px;
+    width:28px; height:28px; display:flex; align-items:center; justify-content:center; font-size:.95rem;
+    box-shadow:2px 3px 6px var(--shadow);
+  }
+  .section-title h2{font-size:1.15rem; color:var(--lav-deep);}
+  .hint{font-size:.82rem; color:var(--sub); line-height:1.5; margin-bottom:10px;}
+  .hint b{color:var(--lav-deep);}
+
+  /* 입력 표 */
+  table.grid{width:100%; border-collapse:separate; border-spacing:5px;}
+  table.grid th{
+    font-family:'Jua'; font-size:.85rem; color:#333; padding:7px 2px; border-radius:12px;
+  }
+  table.grid th.day0{background:var(--pink);} table.grid th.day1{background:var(--peach);}
+  table.grid th.day2{background:#FFF3BF;} table.grid th.day3{background:var(--mint);}
+  table.grid th.day4{background:var(--sky);}
+  table.grid th.period{background:#F1F1F1; width:44px; font-size:.78rem;}
+  table.grid td input{
+    width:100%; border:none; background:#F5F5F5; border-radius:12px; padding:9px 6px;
+    font-family:'Gowun Dodum'; font-size:.88rem; text-align:center; color:var(--ink);
+    box-shadow:inset 2px 3px 6px rgba(0,0,0,.06);
+    outline:2px solid transparent; transition:outline .15s;
+  }
+  table.grid td input:focus{outline:2px solid var(--lav);}
+
+  .btn-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;}
+  .btn{
+    font-family:'Jua'; font-size:.92rem; border:none; cursor:pointer; color:#fff;
+    display:inline-block; text-align:center; user-select:none;
+    background:var(--lav); border-radius:16px; padding:10px 18px;
+    box-shadow:4px 5px 10px var(--shadow), inset 1px 2px 3px rgba(255,255,255,.5);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .btn:active{transform:translateY(2px) scale(.98); box-shadow:2px 2px 5px var(--shadow);}
+  .btn.ghost{background:#F1F1F1; color:var(--lav-deep);}
+  .btn.big{font-size:1.05rem; padding:13px 26px; background:var(--lav-deep);}
+  input[type=file]{display:none;}
+
+  /* 테마 선택 */
+  .themes{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px;}
+  .theme-chip{
+    border:1.5px solid #EAEAEA; cursor:pointer; border-radius:18px; padding:12px 6px; font-family:'Jua';
+    font-size:.85rem; color:#333; box-shadow:4px 5px 10px var(--shadow);
+    transition:transform .12s; position:relative;
+  }
+  .theme-chip:active{transform:scale(.96);}
+  .theme-chip.selected{outline:3px solid var(--lav-deep);}
+  .theme-chip .dot{display:inline-block; width:14px; height:14px; border-radius:50%; margin-bottom:4px; box-shadow:1px 2px 3px rgba(0,0,0,.12);}
+
+  /* 커스텀 이미지 컨트롤 */
+  #customPanel{display:none; margin-top:14px; padding-top:14px; border-top:2px dashed #DDDDDD;}
+  .slider-row{display:grid; grid-template-columns:88px 1fr 52px; align-items:center; gap:8px; margin-bottom:8px;}
+  .slider-row label{font-size:.82rem; color:var(--sub); font-family:'Jua';}
+  .slider-row output{font-size:.78rem; color:var(--lav-deep); text-align:right;}
+  input[type=range]{
+    -webkit-appearance:none; width:100%; height:10px; border-radius:999px;
+    background:#EDEDED; box-shadow:inset 2px 2px 5px rgba(0,0,0,.08);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:var(--lav);
+    box-shadow:2px 3px 6px var(--shadow); cursor:pointer;
+  }
+  .toggle-row{display:flex; flex-wrap:wrap; gap:14px; margin:10px 0; font-size:.85rem;}
+  .toggle-row label{display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--ink);}
+  .mini-row{display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px; font-size:.85rem;}
+  select, input[type=color], input[type=text].opt{
+    border:none; border-radius:12px; padding:8px 10px; font-family:'Gowun Dodum'; font-size:.85rem;
+    background:#F5F5F5; color:var(--ink); box-shadow:inset 2px 2px 5px rgba(0,0,0,.06);
+  }
+  input[type=color]{width:46px; height:36px; padding:3px; cursor:pointer;}
+
+  input#titleInput{
+    width:100%; border:none; background:#F5F5F5; border-radius:14px; padding:11px 14px;
+    font-family:'Jua'; font-size:1rem; color:var(--ink); text-align:center;
+    box-shadow:inset 2px 3px 6px rgba(0,0,0,.06); outline:2px solid transparent;
+  }
+  input#titleInput:focus{outline:2px solid var(--lav);}
+
+  /* 미리보기 */
+  .preview-frame{
+    background:#F3F3F3; border-radius:22px; padding:16px;
+    box-shadow:inset 3px 4px 10px rgba(0,0,0,.08);
+  }
+  #preview{width:100%; height:auto; display:block; border-radius:10px; background:#fff;
+    touch-action:none;
+    box-shadow:6px 8px 18px rgba(0,0,0,.18);}
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(80px);
+    background:var(--lav-deep); color:#fff; font-family:'Jua'; padding:12px 22px; border-radius:999px;
+    box-shadow:4px 6px 14px rgba(0,0,0,.2); opacity:0; transition:.3s; pointer-events:none; z-index:99;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="emoji">🎨</span> 시간표 테마 메이커</h1>
+  <p>시간표를 입력하고 테마를 고르면, A4 크기 고화질 이미지로 뚝딱!</p>
+</header>
+
+<div class="wrap">
+  <!-- ===== 왼쪽: 입력 ===== -->
+  <div>
+    <div class="clay">
+      <div class="section-title"><span class="badge">1</span><h2>시간표 입력</h2></div>
+      <p class="hint">칸에 직접 쓰거나, <b>엑셀·한글 표를 복사해서 아무 칸에나 붙여넣기(Ctrl+V)</b> 하면 자동으로 채워져요. 엑셀 셀 안에서 줄바꿈(Alt+Enter)된 내용도 <b>한 칸에 그대로</b> 들어갑니다.</p>
+      <table class="grid" id="inputGrid">
+        <thead>
+          <tr>
+            <th class="period">교시</th>
+            <th class="day0">월</th><th class="day1">화</th><th class="day2">수</th><th class="day3">목</th><th class="day4">금</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="btn-row">
+        <label class="btn ghost" for="excelFile">📂 엑셀 파일 업로드</label>
+        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv">
+        <button class="btn ghost" id="sampleBtn">✨ 예시 채우기</button>
+        <button class="btn ghost" id="clearBtn">🧹 모두 지우기</button>
+      </div>
+      <div class="toggle-row" style="margin-top:12px;">
+        <label><input type="checkbox" id="ckLunch"> 🍚 4교시와 5교시 사이에 점심시간 넣기</label>
+      </div>
+    </div>
+
+    <div class="clay">
+      <div class="section-title"><span class="badge">2</span><h2>제목</h2></div>
+      <input type="text" id="titleInput" value="우리 반 시간표" maxlength="20" placeholder="예: 1학년 3반 시간표">
+      <p class="hint" style="margin-top:8px;">내 이미지 테마에서는 이미지에 이미 제목이 있는 경우가 많아, 제목 표시를 켜고 끌 수 있어요.</p>
+    </div>
+
+    <div class="clay">
+      <div class="section-title"><span class="badge">3</span><h2>테마 고르기</h2></div>
+      <div class="themes" id="themeList"></div>
+
+      <div id="customPanel">
+        <p class="hint"><b>내 이미지 모드</b> — 시간표 틀이 그려진 이미지를 올리고, 미리보기의 <b>빨간 가이드 박스를 끌어 이동</b>하고, <b>모서리·변의 흰 핸들로 크기를 조절</b>하세요(엑셀 표 조절과 같은 방식). 제목을 켜면 <b>파란 점선 박스</b>가 생기는데, 이것도 끌어서 원하는 위치에 놓을 수 있어요. 가이드선은 다운로드 이미지에는 나오지 않아요.</p>
+        <div class="btn-row" style="margin:0 0 12px;">
+          <label class="btn" for="imgFile">🖼️ 테마 이미지 올리기</label>
+          <input type="file" id="imgFile" accept="image/*">
+        </div>
+        <div id="dropZone" style="border:2.5px dashed #BBB; border-radius:16px; padding:14px; text-align:center; font-size:.83rem; color:var(--sub); margin-bottom:12px; background:#FAFAFA;">
+          또는 여기로 이미지를 <b style="color:var(--lav-deep);">드래그해서 놓기</b>
+        </div>
+        <div class="slider-row"><label>글자 크기</label><input type="range" id="sF" min="50" max="160" step="5" value="100"><output id="oF">100%</output></div>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="ckGuide" checked> 가이드선 보기</label>
+          <label><input type="checkbox" id="ckHeader"> 요일 행도 글자로 쓰기</label>
+          <label><input type="checkbox" id="ckPeriod"> 교시 열도 글자로 쓰기</label>
+          <label><input type="checkbox" id="ckTitle"> 제목 표시</label>
+        </div>
+        <div class="mini-row">
+          글자색 <input type="color" id="textColor" value="#4A4463">
+          글꼴 <select id="fontSel">
+            <option value="Jua">Jua (동글동글)</option>
+            <option value="Gowun Dodum" selected>고운돋움</option>
+            <option value="sans-serif">기본 고딕</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 오른쪽: 미리보기 ===== -->
+  <div>
+    <div class="clay">
+      <div class="section-title"><span class="badge">4</span><h2>미리보기 & 다운로드</h2></div>
+      <div class="preview-frame"><canvas id="preview" width="1240" height="1754"></canvas></div>
+      <div class="btn-row" style="justify-content:center;">
+        <button class="btn big" id="dlBtn">💾 A4 고화질 PNG 저장</button>
+      </div>
+      <p class="hint" style="text-align:center; margin-top:8px;">A4 세로 · 300dpi (2480×3508px) — 인쇄해도 선명해요!</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 상태 ============ */
+const ROWS = 7, COLS = 5;
+const DAYS = ['월','화','수','목','금'];
+let grid = Array.from({length:ROWS},()=>Array(COLS).fill(''));
+let themeKey = 'lavender';
+let customImg = null;
+const calib = { x:8, y:22, w:84, h:68, f:100, tx:50, ty:8, guide:true, header:false, period:false, title:false };
+let lunchOn = false;
+let custom = { color:'#4A4463', font:'Gowun Dodum' };
+
+/* ============ 기본 테마 정의 ============ */
+const THEMES = {
+  lavender:{ name:'라벤더 클레이', dot:'#B9A7E6',
+    bg:['#F5F0FE','#EDE5FB'], title:'#7C6BAF', cell:'#FFFFFF', text:'#55506E',
+    days:['#FFD9E3','#FFE8CF','#FFF4C2','#D8F5DC','#D7E9FF'], periodBg:'#E9E2F8', line:'#B7A8DF',
+    shadow:'rgba(140,120,190,0.30)', deco:'#C9BBEE' },
+  mint:{ name:'민트 소다', dot:'#8FD9BE',
+    bg:['#EEFBF4','#DFF5EA'], title:'#3E9B77', cell:'#FFFFFF', text:'#3E5B50',
+    days:['#C8F1DE','#FFF2C4','#FFE0D0','#D5ECFF','#E6DEFB'], periodBg:'#D8F2E4', line:'#8FD3B6',
+    shadow:'rgba(90,170,140,0.28)', deco:'#A8E4C9' },
+  peach:{ name:'피치 크림', dot:'#FFBFA3',
+    bg:['#FFF4EC','#FDE8DB'], title:'#D97B54', cell:'#FFFEFB', text:'#6E5346',
+    days:['#FFDACB','#FFE9BF','#F6F0C3','#D9EFD5','#F3DDF0'], periodBg:'#FBE3D4', line:'#EBAF92',
+    shadow:'rgba(210,140,100,0.26)', deco:'#F7C6AC' },
+  sky:{ name:'하늘 구름', dot:'#9EC9F5',
+    bg:['#EEF6FF','#DFEDFC'], title:'#4C7FBF', cell:'#FFFFFF', text:'#41597A',
+    days:['#CFE4FB','#DDF2FF','#FFF0C9','#D9F3E2','#EBE1FA'], periodBg:'#DCEBFA', line:'#93BEEA',
+    shadow:'rgba(110,150,210,0.28)', deco:'#B6D6F6' },
+  night:{ name:'밤하늘 별빛', dot:'#4B4670',
+    bg:['#3B3757','#332F4C'], title:'#EFEAFF', cell:'#4B4670', text:'#F1EDFC',
+    days:['#7A6FA8','#6E7FB0','#6C93A8','#75A08D','#9A7FA6'], periodBg:'#443F63', line:'#6C6494',
+    shadow:'rgba(0,0,0,0.35)', deco:'#8B81BA', dark:true }
+};
+
+/* ============ DOM 준비 ============ */
+const tbody = document.querySelector('#inputGrid tbody');
+for(let r=0;r<ROWS;r++){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<th class="period">${r+1}</th>` +
+    Array.from({length:COLS},(_,c)=>`<td><input data-r="${r}" data-c="${c}" autocomplete="off"></td>`).join('');
+  tbody.appendChild(tr);
+}
+const cleanCell = v => String(v??'').replace(/\s+/g,' ').trim();
+
+/* 엑셀 클립보드(TSV) 파서: 셀 안 줄바꿈(Alt+Enter)은 따옴표로 감싸져 오므로 한 칸으로 처리 */
+function parseClipboard(text){
+  const rows=[[]]; let cur=''; let inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQ){
+      if(ch==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else inQ=false; }
+      else cur+=ch;                       // 셀 내부 줄바꿈·탭도 그대로 보존
+    }else{
+      if(ch==='"' && cur===''){ inQ=true; }
+      else if(ch==='\t'){ rows[rows.length-1].push(cur); cur=''; }
+      else if(ch==='\n'){ rows[rows.length-1].push(cur); cur=''; rows.push([]); }
+      else if(ch==='\r'){ /* 무시 */ }
+      else cur+=ch;
+    }
+  }
+  rows[rows.length-1].push(cur);
+  while(rows.length && rows[rows.length-1].every(c=>c.trim()==='')) rows.pop();
+  return rows;
+}
+
+const inputs = [...document.querySelectorAll('#inputGrid input')];
+inputs.forEach(inp=>{
+  inp.addEventListener('input', ()=>{ grid[+inp.dataset.r][+inp.dataset.c]=inp.value; scheduleRender(); });
+  inp.addEventListener('paste', e=>{
+    const text = (e.clipboardData||window.clipboardData).getData('text');
+    if(!/[\t\n]/.test(text)) return;           // 단일 값 붙여넣기는 그대로
+    e.preventDefault();
+    const r0=+inp.dataset.r, c0=+inp.dataset.c;
+    parseClipboard(text).forEach((line,i)=>{
+      line.forEach((val,j)=>{
+        const r=r0+i, c=c0+j;
+        if(r<ROWS && c<COLS){ grid[r][c]=cleanCell(val); }
+      });
+    });
+    syncInputs(); scheduleRender();
+    toast('복붙 완료! 🎉');
+  });
+});
+function syncInputs(){ inputs.forEach(inp=> inp.value = grid[+inp.dataset.r][+inp.dataset.c]); }
+
+/* 테마 칩 */
+const themeList = document.getElementById('themeList');
+Object.entries(THEMES).forEach(([key,t])=>{
+  const b=document.createElement('button');
+  b.className='theme-chip'; b.dataset.key=key;
+  b.style.background=`linear-gradient(145deg, ${t.bg[0]}, ${t.bg[1]})`;
+  if(t.dark) b.style.color='#EFEAFF';
+  b.innerHTML=`<span class="dot" style="background:${t.dot}"></span><br>${t.name}`;
+  b.addEventListener('click',()=>selectTheme(key));
+  themeList.appendChild(b);
+});
+const customChip=document.createElement('button');
+customChip.className='theme-chip'; customChip.dataset.key='custom';
+customChip.style.background='linear-gradient(145deg,#FFF,#F0EAFB)';
+customChip.innerHTML=`<span class="dot" style="background:conic-gradient(#FFD6E0,#FFF3BF,#CFF3E0,#CFE6FF,#E4D8FB,#FFD6E0)"></span><br>내 이미지`;
+customChip.addEventListener('click',()=>selectTheme('custom'));
+themeList.appendChild(customChip);
+
+function selectTheme(key){
+  themeKey=key;
+  document.querySelectorAll('.theme-chip').forEach(el=>el.classList.toggle('selected', el.dataset.key===key));
+  document.getElementById('customPanel').style.display = key==='custom' ? 'block':'none';
+  scheduleRender();
+}
+
+/* 커스텀 컨트롤 바인딩 */
+document.getElementById('sF').addEventListener('input',e=>{
+  calib.f=+e.target.value;
+  document.getElementById('oF').textContent=e.target.value+'%';
+  scheduleRender();
+});
+[['ckGuide','guide'],['ckHeader','header'],['ckPeriod','period'],['ckTitle','title']].forEach(([id,prop])=>{
+  document.getElementById(id).addEventListener('change',e=>{ calib[prop]=e.target.checked; scheduleRender(); });
+});
+document.getElementById('ckLunch').addEventListener('change',e=>{ lunchOn=e.target.checked; scheduleRender(); });
+document.getElementById('textColor').addEventListener('input',e=>{ custom.color=e.target.value; scheduleRender(); });
+document.getElementById('fontSel').addEventListener('change',e=>{ custom.font=e.target.value; scheduleRender(); });
+document.getElementById('titleInput').addEventListener('input',scheduleRender);
+
+/* 파일 업로드 */
+document.getElementById('excelFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    grid=extractGrid(rows); syncInputs(); scheduleRender();
+    toast('엑셀 불러오기 완료! 📂');
+  }catch(err){ toast('엑셀을 읽지 못했어요 😢'); console.error(err); }
+  e.target.value='';
+});
+function loadImageFile(f){
+  if(!f){ toast('파일이 선택되지 않았어요'); return; }
+  if(f.type && !f.type.startsWith('image/')){ toast('이미지 파일(PNG/JPG)만 올릴 수 있어요 🙏'); return; }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      customImg=img;
+      selectTheme('custom');
+      scheduleRender();
+      toast('이미지 준비 완료! 슬라이더로 칸을 맞춰보세요 🖼️');
+    };
+    img.onerror=()=>toast('이미지를 불러오지 못했어요 😢 다른 파일로 시도해보세요');
+    img.src=reader.result;                 // data URL — 어떤 환경에서도 안전
+  };
+  reader.onerror=()=>toast('파일을 읽는 중 오류가 났어요 😢');
+  reader.readAsDataURL(f);
+}
+document.getElementById('imgFile').addEventListener('change',e=>{
+  loadImageFile(e.target.files[0]);
+  e.target.value='';
+});
+/* 드래그 앤 드롭 */
+const dz=document.getElementById('dropZone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{
+  e.preventDefault(); dz.style.background='#EFEFEF';
+}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{
+  e.preventDefault(); dz.style.background='#FAFAFA';
+}));
+dz.addEventListener('drop',e=>{
+  const f=e.dataTransfer.files && e.dataTransfer.files[0];
+  loadImageFile(f);
+});
+
+/* 엑셀에서 5×7 추출: 요일 행 자동 탐색 */
+function extractGrid(rows){
+  const out=Array.from({length:ROWS},()=>Array(COLS).fill(''));
+  let hr=-1, colIdx=[];
+  for(let i=0;i<Math.min(rows.length,20);i++){
+    const r=(rows[i]||[]).map(c=>String(c??'').trim());
+    const idx=DAYS.map(d=>r.findIndex(c=>c.startsWith(d)));
+    if(idx.every(x=>x>=0)){ hr=i; colIdx=idx; break; }
+  }
+  if(hr>=0){
+    let taken=0;
+    for(let i=hr+1;i<rows.length && taken<ROWS;i++){
+      const r=rows[i]||[];
+      const vals=colIdx.map(c=>cleanCell(r[c]));
+      if(vals.every(v=>v==='')) continue;
+      out[taken++]=vals;
+    }
+  }else{
+    // 요일 행이 없으면: 첫 열이 교시 번호처럼 보이면 건너뛰기
+    const start=(rows[0]||[]).length>COLS && rows.slice(0,ROWS).every(r=>/^\d+/.test(String((r||[])[0]??''))) ? 1:0;
+    for(let i=0;i<Math.min(rows.length,ROWS);i++){
+      for(let j=0;j<COLS;j++) out[i][j]=cleanCell((rows[i]||[])[j+start]);
+    }
+  }
+  return out;
+}
+
+/* 버튼: 예시/지우기 */
+document.getElementById('sampleBtn').addEventListener('click',()=>{
+  grid=[
+    ['한국지리','수학','통합사회','영어','국어'],
+    ['국어','세계지리','과학','수학','한국지리'],
+    ['영어','체육','수학','통합사회','음악'],
+    ['수학','국어','영어','과학','체육'],
+    ['통합사회','미술','한국지리','국어','영어'],
+    ['과학','영어','국어','세계지리','수학'],
+    ['창체','창체','자율','동아리','진로'],
+  ];
+  syncInputs(); scheduleRender();
+});
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  grid=Array.from({length:ROWS},()=>Array(COLS).fill(''));
+  syncInputs(); scheduleRender();
+});
+
+/* ============ 렌더링 ============ */
+const W=2480, H=3508;                 // A4 300dpi
+const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+const ctx=cv.getContext('2d');
+const pv=document.getElementById('preview'); const pctx=pv.getContext('2d');
+
+let raf=null;
+function scheduleRender(){ if(raf) return; raf=requestAnimationFrame(()=>{ raf=null; render(true); blit(); }); }
+function blit(){ pctx.clearRect(0,0,pv.width,pv.height); pctx.drawImage(cv,0,0,pv.width,pv.height); }
+
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+
+function fitText(text, maxW, maxH, base, font, weightPx){
+  // 반환: {size, lines[]}
+  for(let size=base; size>=26; size-=4){
+    ctx.font=`${size}px "${font}"`;
+    const words=String(text).split(/\s+/).filter(Boolean);
+    const lines=[]; let cur='';
+    for(const w of words){
+      const t=cur? cur+' '+w : w;
+      if(ctx.measureText(t).width<=maxW){ cur=t; }
+      else{
+        if(cur) lines.push(cur);
+        // 한 단어가 너무 길면 글자 단위 분해
+        if(ctx.measureText(w).width>maxW){
+          let piece='';
+          for(const ch of w){
+            if(ctx.measureText(piece+ch).width<=maxW) piece+=ch;
+            else{ lines.push(piece); piece=ch; }
+          }
+          cur=piece;
+        }else cur=w;
+      }
+    }
+    if(cur) lines.push(cur);
+    const lh=size*1.22;
+    if(lines.length*lh<=maxH && lines.every(l=>ctx.measureText(l).width<=maxW)) return {size,lines,lh};
+  }
+  ctx.font=`26px "${font}"`;
+  return {size:26, lines:[String(text)], lh:32};
+}
+
+function drawCellText(text, cx, cy, cw, ch, base, font, color){
+  if(!text) return;
+  const {size,lines,lh}=fitText(text, cw*0.86, ch*0.82, base, font);
+  ctx.font=`${size}px "${font}"`; ctx.fillStyle=color;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const startY=cy-(lines.length-1)*lh/2;
+  lines.forEach((l,i)=>ctx.fillText(l,cx,startY+i*lh));
+}
+
+/* 장식: 별/구름/동글이 */
+function star(x,y,r,color,rot=0){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.fillStyle=color; ctx.beginPath();
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2+i*2*Math.PI/5, b=a+Math.PI/5;
+    ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); ctx.lineTo(Math.cos(b)*r*0.45,Math.sin(b)*r*0.45);
+  }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function cloud(x,y,s,color){
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.arc(x,y,s,0,7); ctx.arc(x+s*0.9,y-s*0.35,s*0.75,0,7); ctx.arc(x+s*1.8,y,s*0.85,0,7);
+  ctx.rect(x-s*0.4,y,s*2.6,s*0.8); ctx.fill();
+}
+
+function renderBuiltin(t){
+  // 배경
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,t.bg[0]); g.addColorStop(1,t.bg[1]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // 장식
+  ctx.globalAlpha=t.dark?0.5:0.55;
+  if(t.dark){
+    for(let i=0;i<26;i++) star(120+ (i*97)%2240, 90+(i*211)%520 + (i%2?2680:0), 14+(i%3)*8, '#CFC6F2', i);
+    cloud(260,3260,60,'#544E78'); cloud(2020,300,55,'#544E78');
+  }else{
+    cloud(300,260,70,t.deco); cloud(2050,3230,64,t.deco);
+    star(2180,260,44,t.deco,0.3); star(230,3300,38,t.deco,-0.4); star(2280,3140,30,t.deco,0.8);
+  }
+  ctx.globalAlpha=1;
+
+  // 제목판
+  const title=document.getElementById('titleInput').value || '시간표';
+  const tw=Math.min(1900, ctx.measureText(title).width+700);
+  ctx.save();
+  ctx.shadowColor=t.shadow; ctx.shadowOffsetY=14; ctx.shadowBlur=26;
+  ctx.fillStyle=t.cell; rr((W-tw)/2,150,tw,240,60); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle=t.title; ctx.textAlign='center'; ctx.textBaseline='middle';
+  let ts=120; ctx.font=`${ts}px "Jua"`;
+  while(ctx.measureText(title).width>tw-160 && ts>50){ ts-=6; ctx.font=`${ts}px "Jua"`; }
+  ctx.fillText(title, W/2, 150+126);
+
+  // 표 영역
+  const gx=180, gy=560, gw=W-360, gh=H-560-220;
+  const pcw=250;                          // 교시 열
+  const hh=170;                           // 요일 헤더 높이
+  const units=ROWS+(lunchOn?0.62:0);      // 점심 행은 일반 행의 62% 높이
+  const dcw=(gw-pcw)/COLS, brh=(gh-hh)/units, lunchH=brh*0.62;
+  const rowY = r => gy+hh+r*brh + (lunchOn && r>=4 ? lunchH : 0);
+  const gap=18, rad=34;
+
+  function clayCell(x,y,w,h,fill){
+    ctx.save(); ctx.shadowColor=t.shadow; ctx.shadowOffsetY=10; ctx.shadowBlur=18;
+    ctx.fillStyle=fill; rr(x+gap/2,y+gap/2,w-gap,h-gap,rad); ctx.fill(); ctx.restore();
+    // 윗면 하이라이트
+    ctx.save(); ctx.globalAlpha=t.dark?0.10:0.65; ctx.strokeStyle='#FFFFFF'; ctx.lineWidth=5;
+    rr(x+gap/2+6,y+gap/2+6,w-gap-12,h-gap-12,rad-8); ctx.stroke(); ctx.restore();
+  }
+
+  // 모서리 빈칸(귀여운 도장)
+  clayCell(gx,gy,pcw,hh,t.periodBg);
+  star(gx+pcw/2, gy+hh/2, 34, t.title, 0.2);
+
+  // 요일 헤더
+  DAYS.forEach((d,c)=>{
+    const x=gx+pcw+c*dcw;
+    clayCell(x,gy,dcw,hh,t.days[c]);
+    ctx.fillStyle=t.dark?'#F5F1FF':'#5c5478'; ctx.font='84px "Jua"';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(d, x+dcw/2, gy+hh/2+4);
+  });
+  // 교시 열
+  for(let r=0;r<ROWS;r++){
+    const y=rowY(r);
+    clayCell(gx,y,pcw,brh,t.periodBg);
+    ctx.fillStyle=t.title; ctx.font='72px "Jua"';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(r+1), gx+pcw/2, y+brh/2-16);
+    ctx.font='42px "Jua"'; ctx.globalAlpha=0.7;
+    ctx.fillText('교시', gx+pcw/2, y+brh/2+54); ctx.globalAlpha=1;
+  }
+  // 점심시간 행
+  if(lunchOn){
+    const ly=gy+hh+4*brh;
+    clayCell(gx,ly,pcw,lunchH,t.periodBg);
+    ctx.font='60px "Jua"'; ctx.fillStyle=t.title; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🍴', gx+pcw/2, ly+lunchH/2+4);
+    clayCell(gx+pcw,ly,gw-pcw,lunchH,t.periodBg);
+    ctx.font='72px "Jua"'; ctx.fillStyle=t.title;
+    ctx.fillText('🍚 점심시간', gx+pcw+(gw-pcw)/2, ly+lunchH/2+4);
+  }
+  // 본문 셀
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const x=gx+pcw+c*dcw, y=rowY(r);
+    clayCell(x,y,dcw,brh,t.cell);
+    // 요일색 포인트 점
+    ctx.fillStyle=t.days[c]; ctx.beginPath(); ctx.arc(x+gap/2+34,y+gap/2+34,13,0,7); ctx.fill();
+    drawCellText(grid[r][c], x+dcw/2, y+brh/2, dcw-gap, brh-gap, 82, 'Jua', t.text);
+  }
+
+  // 하단 서명 라인
+  ctx.fillStyle=t.title; ctx.globalAlpha=0.55; ctx.font='46px "Gowun Dodum"';
+  ctx.textAlign='center'; ctx.fillText('⋆ 오늘도 좋은 하루 ⋆', W/2, H-110); ctx.globalAlpha=1;
+}
+
+function renderCustom(showGuide){
+  ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H);
+  if(customImg){
+    const s=Math.min(W/customImg.width, H/customImg.height);
+    const dw=customImg.width*s, dh=customImg.height*s;
+    ctx.drawImage(customImg,(W-dw)/2,(H-dh)/2,dw,dh);
+  }else{
+    ctx.fillStyle='#555555'; ctx.font='90px "Jua"'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🖼️ 테마 이미지를 올려주세요', W/2, H/2-60);
+    ctx.font='52px "Gowun Dodum"'; ctx.fillStyle='#999999';
+    ctx.fillText('이미지 속 시간표 칸 위에 글자를 얹어드려요', W/2, H/2+60);
+  }
+  // 제목(선택) — 파란 점선 박스를 드래그해서 위치 이동
+  titleBox=null;
+  if(calib.title){
+    const title=document.getElementById('titleInput').value||'';
+    if(title){
+      const size=Math.round(110*calib.f/100);
+      ctx.fillStyle=custom.color; ctx.font=`${size}px "${custom.font}"`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      const tx=W*calib.tx/100, ty=H*calib.ty/100;
+      ctx.fillText(title, tx, ty);
+      const twd=ctx.measureText(title).width;
+      titleBox={ x:(tx-twd/2-30)/W*100, y:(ty-size*0.75)/H*100,
+                 w:(twd+60)/W*100, h:(size*1.5)/H*100 };
+      if(showGuide && calib.guide){
+        ctx.save(); ctx.strokeStyle='rgba(50,110,255,0.85)'; ctx.lineWidth=4; ctx.setLineDash([16,12]);
+        ctx.strokeRect(W*titleBox.x/100, H*titleBox.y/100, W*titleBox.w/100, H*titleBox.h/100);
+        ctx.restore();
+      }
+    }
+  }
+  // 표 영역 계산 (요일 행 켜면 8행, 점심시간까지 켜면 9행)
+  const gx=W*calib.x/100, gy=H*calib.y/100, gw=W*calib.w/100, gh=H*calib.h/100;
+  const rows=ROWS+(calib.header?1:0)+(lunchOn?1:0), cols=COLS+(calib.period?1:0);
+  const lunchRow = lunchOn ? 4+(calib.header?1:0) : -1;
+  const cw=gw/cols, chh=gh/rows;
+  const base=Math.min(chh*0.5, cw*0.34)*calib.f/100;
+
+  for(let r=0;r<rows;r++){
+    const y=gy+r*chh;
+    if(r===lunchRow){                       // 점심시간: 요일 칸 폭 전체에 한 번만
+      const x0=gx+(calib.period?cw:0), w0=gw-(calib.period?cw:0);
+      if(calib.period) drawCellText('🍴', gx+cw/2, y+chh/2, cw, chh, base, custom.font, custom.color);
+      drawCellText('점심시간', x0+w0/2, y+chh/2, w0, chh, base, custom.font, custom.color);
+      continue;
+    }
+    for(let c=0;c<cols;c++){
+      const x=gx+c*cw;
+      const isHead=calib.header && r===0, isPer=calib.period && c===0;
+      let text='';
+      if(isHead && isPer) text='';
+      else if(isHead) text=DAYS[c-(calib.period?1:0)];
+      else{
+        const bodyR = r-(calib.header?1:0)-(lunchOn && r>lunchRow ?1:0);
+        if(isPer) text=(bodyR+1)+'교시';
+        else text=grid[bodyR][c-(calib.period?1:0)];
+      }
+      drawCellText(text, x+cw/2, y+chh/2, cw, chh, base, custom.font, custom.color);
+    }
+  }
+  // 가이드선(미리보기 전용)
+  if(showGuide && calib.guide){
+    ctx.save(); ctx.strokeStyle='rgba(255,60,90,0.85)'; ctx.lineWidth=5; ctx.setLineDash([22,16]);
+    ctx.strokeRect(gx,gy,gw,gh);
+    ctx.lineWidth=2.5; ctx.setLineDash([12,12]); ctx.strokeStyle='rgba(255,60,90,0.5)';
+    for(let c=1;c<cols;c++){ ctx.beginPath(); ctx.moveTo(gx+c*cw,gy); ctx.lineTo(gx+c*cw,gy+gh); ctx.stroke(); }
+    for(let r=1;r<rows;r++){ ctx.beginPath(); ctx.moveTo(gx,gy+r*chh); ctx.lineTo(gx+gw,gy+r*chh); ctx.stroke(); }
+    // 리사이즈 핸들 (모서리 4개 + 변 4개)
+    ctx.setLineDash([]); ctx.lineWidth=6; ctx.strokeStyle='rgba(255,60,90,0.95)'; ctx.fillStyle='#FFFFFF';
+    const HS=34;
+    [[gx,gy],[gx+gw/2,gy],[gx+gw,gy],
+     [gx,gy+gh/2],[gx+gw,gy+gh/2],
+     [gx,gy+gh],[gx+gw/2,gy+gh],[gx+gw,gy+gh]].forEach(([hx,hy])=>{
+      ctx.fillRect(hx-HS/2,hy-HS/2,HS,HS); ctx.strokeRect(hx-HS/2,hy-HS/2,HS,HS);
+    });
+    ctx.restore();
+  }
+}
+
+function render(showGuide){
+  ctx.clearRect(0,0,W,H);
+  if(themeKey==='custom') renderCustom(showGuide);
+  else renderBuiltin(THEMES[themeKey]);
+}
+
+/* ============ 가이드 박스·제목 드래그 이동 / 핸들 리사이즈 ============ */
+let dragState=null;
+let titleBox=null;                          // 제목 히트 영역 (% 단위, renderCustom에서 갱신)
+function pvPos(e){
+  const r=pv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)/r.width*100, y:(e.clientY-r.top)/r.height*100,
+           thX:14/r.width*100, thY:14/r.height*100 };   // 핸들 판정 반경(화면 14px)
+}
+function hitTest(p){
+  if(titleBox && p.x>titleBox.x && p.x<titleBox.x+titleBox.w
+              && p.y>titleBox.y && p.y<titleBox.y+titleBox.h) return 'title';
+  if(!calib.guide) return null;
+  const {x,y,w,h}=calib;
+  const nearL=Math.abs(p.x-x)<=p.thX, nearR=Math.abs(p.x-(x+w))<=p.thX;
+  const nearT=Math.abs(p.y-y)<=p.thY, nearB=Math.abs(p.y-(y+h))<=p.thY;
+  const inX=p.x>x-p.thX && p.x<x+w+p.thX, inY=p.y>y-p.thY && p.y<y+h+p.thY;
+  if(nearL&&nearT)return'nw'; if(nearR&&nearT)return'ne';
+  if(nearL&&nearB)return'sw'; if(nearR&&nearB)return'se';
+  if(nearT&&inX)return'n'; if(nearB&&inX)return's';
+  if(nearL&&inY)return'w'; if(nearR&&inY)return'e';
+  if(p.x>x&&p.x<x+w&&p.y>y&&p.y<y+h)return'move';
+  return null;
+}
+const CURSORS={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',
+               n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize',move:'move',title:'move'};
+pv.addEventListener('pointerdown',e=>{
+  if(themeKey!=='custom') return;
+  const p=pvPos(e), mode=hitTest(p);
+  if(!mode) return;
+  dragState={mode, sx:p.x, sy:p.y, o:{x:calib.x,y:calib.y,w:calib.w,h:calib.h,tx:calib.tx,ty:calib.ty}};
+  pv.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+pv.addEventListener('pointermove',e=>{
+  if(themeKey!=='custom'){ pv.style.cursor='default'; return; }
+  const p=pvPos(e);
+  if(!dragState){ const m=hitTest(p); pv.style.cursor=m?CURSORS[m]:'default'; return; }
+  const dx=p.x-dragState.sx, dy=p.y-dragState.sy, o=dragState.o, m=dragState.mode;
+  if(m==='title'){
+    calib.tx=+Math.max(2,Math.min(98,o.tx+dx)).toFixed(1);
+    calib.ty=+Math.max(2,Math.min(98,o.ty+dy)).toFixed(1);
+    scheduleRender(); return;
+  }
+  let x=o.x, y=o.y, w=o.w, h=o.h;
+  if(m==='move'){ x=o.x+dx; y=o.y+dy; }
+  else{
+    if(m.includes('w')){ x=o.x+dx; w=o.w-dx; }
+    if(m.includes('e')){ w=o.w+dx; }
+    if(m.includes('n')){ y=o.y+dy; h=o.h-dy; }
+    if(m.includes('s')){ h=o.h+dy; }
+  }
+  if(w<5){ if(m.includes('w')) x=o.x+o.w-5; w=5; }
+  if(h<5){ if(m.includes('n')) y=o.y+o.h-5; h=5; }
+  x=Math.max(0,Math.min(x,100-w)); y=Math.max(0,Math.min(y,100-h));
+  w=Math.min(w,100-x); h=Math.min(h,100-y);
+  calib.x=+x.toFixed(1); calib.y=+y.toFixed(1); calib.w=+w.toFixed(1); calib.h=+h.toFixed(1);
+  scheduleRender();
+});
+['pointerup','pointercancel'].forEach(ev=>pv.addEventListener(ev,()=>{ dragState=null; }));
+
+/* 다운로드 */
+document.getElementById('dlBtn').addEventListener('click',()=>{
+  render(false);                              // 가이드선 없이
+  cv.toBlob(b=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    const t=(document.getElementById('titleInput').value||'시간표').replace(/\s+/g,'_');
+    a.download=`${t}_${THEMES[themeKey]?THEMES[themeKey].name:'내이미지'}.png`;
+    a.click(); URL.revokeObjectURL(a.href);
+    render(true); blit();
+    toast('저장 완료! 💾');
+  },'image/png');
+});
+
+/* 토스트 */
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+/* 초기화: 폰트 로드 후 렌더 */
+selectTheme('lavender');
+document.fonts.ready.then(()=>Promise.all([
+  document.fonts.load('80px "Jua"'), document.fonts.load('80px "Gowun Dodum"')
+])).then(()=>scheduleRender());
+scheduleRender();
+</script>
+</body>
+</html>
